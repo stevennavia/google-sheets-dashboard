@@ -11,7 +11,7 @@
   .header-sub{font-size:0.7rem;color:#94a3b8;display:flex;align-items:center;gap:0.35rem}
   .header-sub .dot{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-  .main{display:flex;flex-direction:column;height:calc(100vh - 60px);padding:0.5rem 1.5rem 1.5rem;gap:0.75rem}
+  .main{display:flex;flex-direction:column;height:calc(100vh - 72px);padding:0.5rem 1.5rem 1.5rem;gap:0.75rem}
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:0.75rem}
   .card{background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1rem 1rem 1rem 0.85rem;display:flex;align-items:center;gap:0.75rem;transition:transform 0.2s,box-shadow 0.2s}
   .card:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.3)}
@@ -19,14 +19,21 @@
   .card-info{flex:1;min-width:0}
   .card-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;color:#94a3b8;font-weight:500}
   .card-value{font-size:1.6rem;font-weight:700;margin-top:0.15rem;letter-spacing:-0.02em;transition:color 0.3s}
-  .chart-wrap{flex:1;min-height:0;background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1rem 1rem 0.5rem;display:flex;flex-direction:column}
+  .charts-row{flex:1;min-height:0;display:flex;gap:0.75rem}
+  .chart-wrap{background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1rem;display:flex;flex-direction:column}
+  .chart-wrap.bar{flex:2;min-width:0}
+  .chart-wrap.pie{flex:1;min-width:0}
   .chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem}
   .chart-title{font-size:0.8rem;font-weight:600;color:#e2e8f0}
-  .chart-legend{display:flex;gap:1rem}
+  .chart-legend{display:flex;gap:0.75rem;flex-wrap:wrap}
   .legend-item{display:flex;align-items:center;gap:0.3rem;font-size:0.65rem;color:#94a3b8}
   .legend-dot{width:8px;height:8px;border-radius:2px}
   .chart-body{flex:1;min-height:0}
   .chart-body canvas{width:100%!important;height:100%!important}
+  .pie-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+  .pie-center-label{font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em}
+  .pie-center-value{font-size:1.3rem;font-weight:700;color:#f8fafc;margin-top:0.1rem}
+  .pie-wrap{position:relative;flex:1;min-height:0}
   .loader{display:flex;align-items:center;justify-content:center;height:100%;gap:0.5rem;color:#64748b;font-size:0.85rem}
   .spinner{width:20px;height:20px;border:2px solid rgba(59,130,246,0.2);border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -43,27 +50,39 @@
 </div>
 <div class="main">
   <div class="cards" id="cards"><div class="loader"><div class="spinner"></div>Cargando datos...</div></div>
-  <div class="chart-wrap">
-    <div class="chart-header">
-      <div class="chart-title">Rendimiento por período</div>
-      <div class="chart-legend" id="legend"></div>
+  <div class="charts-row">
+    <div class="chart-wrap bar">
+      <div class="chart-header">
+        <div class="chart-title">Rendimiento por período</div>
+        <div class="chart-legend" id="legend"></div>
+      </div>
+      <div class="chart-body"><canvas id="ch"></canvas></div>
     </div>
-    <div class="chart-body"><canvas id="ch"></canvas></div>
+    <div class="chart-wrap pie">
+      <div class="chart-header">
+        <div class="chart-title">Distribución total</div>
+      </div>
+      <div class="pie-wrap">
+        <div class="pie-center"><div class="pie-center-label">Total</div><div class="pie-center-value" id="pieTotal">—</div></div>
+        <div class="chart-body"><canvas id="pie"></canvas></div>
+      </div>
+    </div>
   </div>
 </div>
 <script>
-var chart=null;var prevData={};
+var chart=null;var pieChart=null;var prevData={};
 var PALETTE=[
-  {fill:'rgba(59,130,246,0.35)',border:'#3b82f6',accent:'linear-gradient(180deg,#3b82f6,#2563eb)'},
-  {fill:'rgba(239,68,68,0.35)',border:'#ef4444',accent:'linear-gradient(180deg,#ef4444,#dc2626)'},
-  {fill:'rgba(34,197,94,0.35)',border:'#22c55e',accent:'linear-gradient(180deg,#22c55e,#16a34a)'},
-  {fill:'rgba(168,85,247,0.35)',border:'#a855f7',accent:'linear-gradient(180deg,#a855f7,#9333ea)'},
-  {fill:'rgba(245,158,11,0.35)',border:'#f59e0b',accent:'linear-gradient(180deg,#f59e0b,#d97706)'},
-  {fill:'rgba(236,72,153,0.35)',border:'#ec4899',accent:'linear-gradient(180deg,#ec4899,#db2777)'}
+  {fill:'rgba(59,130,246,0.35)',border:'#3b82f6',solid:'#3b82f6',accent:'linear-gradient(180deg,#3b82f6,#2563eb)'},
+  {fill:'rgba(239,68,68,0.35)',border:'#ef4444',solid:'#ef4444',accent:'linear-gradient(180deg,#ef4444,#dc2626)'},
+  {fill:'rgba(34,197,94,0.35)',border:'#22c55e',solid:'#22c55e',accent:'linear-gradient(180deg,#22c55e,#16a34a)'},
+  {fill:'rgba(168,85,247,0.35)',border:'#a855f7',solid:'#a855f7',accent:'linear-gradient(180deg,#a855f7,#9333ea)'},
+  {fill:'rgba(245,158,11,0.35)',border:'#f59e0b',solid:'#f59e0b',accent:'linear-gradient(180deg,#f59e0b,#d97706)'},
+  {fill:'rgba(236,72,153,0.35)',border:'#ec4899',solid:'#ec4899',accent:'linear-gradient(180deg,#ec4899,#db2777)'}
 ];
+var tooltipOpts={backgroundColor:"rgba(15,15,35,0.95)",titleColor:"#f8fafc",bodyColor:"#cbd5e1",borderColor:"rgba(255,255,255,0.1)",borderWidth:1,cornerRadius:8,padding:12,titleFont:{weight:"600"},bodyFont:{size:13}};
 
 function loadData(){
-  fetch("https://sheets.googleapis.com/v4/spreadsheets/YOUR_SPREADSHEET_ID/values/YOUR_RANGE?key=YOUR_API_KEY")
+  fetch("https://sheets.googleapis.com/v4/spreadsheets/1pi30XNUTeeUNZGBhsCq7Rf282vvdQJbO6PfXhKzirN0/values/Hoja 1!A1:C100?key=AIzaSyASl_QqcJfdSoNDAtS1wnlBk5LL0IVFSSk")
   .then(function(r){return r.json()})
   .then(function(j){
     if(!j.values||j.values.length<2)return;
@@ -71,6 +90,7 @@ function loadData(){
     var data=j.values.slice(1).map(function(r){var o={};h.forEach(function(k,i){o[k]=isNaN(r[i])?r[i]:Number(r[i])});return o;});
     var k=Object.keys(data[0]).filter(function(x){return x!=="mes"&&typeof data[0][x]==="number"});
     var tot={};k.forEach(function(x){tot[x]=data.reduce(function(s,r){return s+(Number(r[x])||0)},0)});
+    var grandTotal=k.reduce(function(s,x){return s+tot[x]},0);
 
     document.getElementById("cards").innerHTML=k.map(function(x,i){
       var p=PALETTE[i%PALETTE.length];
@@ -99,15 +119,29 @@ function loadData(){
       options:{responsive:true,maintainAspectRatio:false,
         animation:{duration:600,easing:"easeOutQuart"},
         interaction:{mode:"index",intersect:false},
-        plugins:{legend:{display:false},
-          tooltip:{backgroundColor:"rgba(15,15,35,0.95)",titleColor:"#f8fafc",bodyColor:"#cbd5e1",borderColor:"rgba(255,255,255,0.1)",borderWidth:1,cornerRadius:8,padding:12,
-            titleFont:{weight:"600"},bodyFont:{size:13},
-            callbacks:{label:function(ctx){return ctx.dataset.label+": "+ctx.parsed.y.toLocaleString()}}}},
+        plugins:{legend:{display:false},tooltip:tooltipOpts},
         scales:{
           x:{grid:{display:false},ticks:{color:"#64748b",font:{size:11,weight:"500"}},border:{display:false}},
           y:{beginAtZero:true,grid:{color:"rgba(148,163,184,0.08)",drawBorder:false},ticks:{color:"#64748b",font:{size:11},callback:function(v){return v.toLocaleString()}},border:{display:false}}
         }}});
     }
+
+    document.getElementById("pieTotal").textContent=grandTotal.toLocaleString();
+    var pieData=k.map(function(x){return tot[x]});
+    var pieColors=k.map(function(x,i){return PALETTE[i%PALETTE.length].solid});
+    var pieBorders=k.map(function(){return "rgba(15,15,35,0.8)"});
+
+    if(pieChart){pieChart.data.labels=k;pieChart.data.datasets[0].data=pieData;pieChart.data.datasets[0].backgroundColor=pieColors;pieChart.data.datasets[0].borderColor=pieBorders;pieChart.update()}
+    else{
+      pieChart=new Chart(document.getElementById("pie"),{type:"doughnut",data:{labels:k,
+        datasets:[{data:pieData,backgroundColor:pieColors,borderColor:pieBorders,borderWidth:2,hoverOffset:6}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:"65%",
+        animation:{duration:600,easing:"easeOutQuart"},
+        plugins:{legend:{display:false},
+          tooltip:tooltipOpts}
+      }});
+    }
+
     document.getElementById("u").textContent="Actualizado: "+new Date().toLocaleTimeString("es-MX");
   }).catch(function(e){document.getElementById("u").textContent="Error: "+e.message;console.error(e)})
 }
