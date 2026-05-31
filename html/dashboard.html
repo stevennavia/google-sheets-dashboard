@@ -128,8 +128,8 @@ function loadData(){
 
     document.getElementById("pieTotal").textContent=grandTotal.toLocaleString();
     var pieData=k.map(function(x){return tot[x]});
-    var pieColors=k.map(function(x,i){return PALETTE[i%PALETTE.length].solid});
-    var pieBorders=k.map(function(){return "rgba(15,15,35,0.8)"});
+    var pieColors=k.map(function(x,i){return PALETTE[i%PALETTE.length].fill});
+    var pieBorders=k.map(function(x,i){return PALETTE[i%PALETTE.length].border});
 
     if(pieChart){pieChart.data.labels=k;pieChart.data.datasets[0].data=pieData;pieChart.data.datasets[0].backgroundColor=pieColors;pieChart.data.datasets[0].borderColor=pieBorders;pieChart.update()}
     else{
